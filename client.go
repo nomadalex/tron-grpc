@@ -3,16 +3,20 @@ package tron_grpc
 import (
 	"context"
 	"fmt"
+	"github.com/fullstackwang/tron-grpc/api"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
+//go:generate go run tools/generator/gen.go
+
 // GrpcClient controller structure
 type GrpcClient struct {
 	Address string
 	Conn    *grpc.ClientConn
+	client  api.WalletClient
 	timeout time.Duration
 	opts    []grpc.DialOption
 	apiKey  string
@@ -50,10 +54,11 @@ func (g *GrpcClient) Start(opts ...grpc.DialOption) error {
 	if err != nil {
 		return fmt.Errorf("Connecting GRPC Client: %v", err)
 	}
+	g.client = api.NewWalletClient(g.Conn)
 	return nil
 }
 
-func (g *GrpcClient) MakeContext(parent context.Context) (context.Context, context.CancelFunc) {
+func (g *GrpcClient) makeContext(parent context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(parent, g.timeout)
 	if g.apiKey != "" {
 		ctx = metadata.AppendToOutgoingContext(ctx, "TRON-PRO-API-KEY", g.apiKey)
