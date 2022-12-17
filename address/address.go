@@ -1,4 +1,4 @@
-package tron_grpc
+package address
 
 import (
 	"encoding/hex"
