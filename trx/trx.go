@@ -8,20 +8,26 @@ import (
 	"github.com/fullstackwang/tron-grpc/client"
 	"github.com/fullstackwang/tron-grpc/core"
 	"github.com/fullstackwang/tron-grpc/tx"
-	"github.com/fullstackwang/tron-grpc/wallet"
 	"github.com/golang/protobuf/proto"
 )
 
 type Client struct {
 	client *client.Client
-	signer *wallet.Wallet
 }
 
-func New(client *client.Client, signer *wallet.Wallet) *Client {
+func New(client *client.Client) *Client {
 	return &Client{
 		client: client,
-		signer: signer,
 	}
+}
+
+func (c *Client) getSignerAddress() address.Address {
+	return c.client.Signer.Address()
+}
+
+func (c *Client) newTxAndSend(ctx context.Context, tx_ *core.Transaction) (*tx.Transaction, error) {
+	t := tx.New(c.client, c.client.Signer, tx_)
+	return t, t.Send(ctx)
 }
 
 func (c *Client) GetAccount(ctx context.Context, account string) (*core.Account, error) {
@@ -61,7 +67,7 @@ func (c *Client) CreateAccount(ctx context.Context, account string) (*tx.Transac
 	}
 
 	contract := &core.AccountCreateContract{
-		OwnerAddress:   c.signer.Address(),
+		OwnerAddress:   c.getSignerAddress(),
 		AccountAddress: toAddr,
 	}
 
@@ -75,8 +81,7 @@ func (c *Client) CreateAccount(ctx context.Context, account string) (*tx.Transac
 	if tx_.GetResult().GetCode() != 0 {
 		return nil, fmt.Errorf("%s", tx_.GetResult().GetMessage())
 	}
-	tt := tx.New(c.client, c.signer, tx_.Transaction)
-	return tt, tt.Send(ctx)
+	return c.newTxAndSend(ctx, tx_.Transaction)
 }
 
 func (c *Client) Transfer(ctx context.Context, to string, amount int64) (*tx.Transaction, error) {
@@ -86,7 +91,7 @@ func (c *Client) Transfer(ctx context.Context, to string, amount int64) (*tx.Tra
 	}
 
 	contract := &core.TransferContract{
-		OwnerAddress: c.signer.Address(),
+		OwnerAddress: c.getSignerAddress(),
 		ToAddress:    toAddr,
 		Amount:       amount,
 	}
@@ -96,6 +101,5 @@ func (c *Client) Transfer(ctx context.Context, to string, amount int64) (*tx.Tra
 		return nil, err
 	}
 
-	tt := tx.New(c.client, c.signer, tx_.Transaction)
-	return tt, tt.Send(ctx)
+	return c.newTxAndSend(ctx, tx_.Transaction)
 }
