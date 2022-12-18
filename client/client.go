@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/fullstackwang/tron-grpc/wallet"
 
 	"github.com/fullstackwang/tron-grpc/api"
 	"google.golang.org/grpc"
@@ -13,6 +14,7 @@ import (
 //go:generate go run ../tools/generator/gen.go
 
 type Client struct {
+	Signer  Signer
 	address string
 	conn    *grpc.ClientConn
 	client  api.WalletClient
@@ -36,6 +38,10 @@ func NewWithTimeout(address, apikey string, timeout time.Duration) *Client {
 
 func (c *Client) Address() string {
 	return c.address
+}
+
+func (c *Client) SetPrivateKey(key string) {
+	c.Signer = wallet.NewWalletFromPrivateKey(key)
 }
 
 // SetTimeout for Client connections
