@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/fullstackwang/tron-grpc"
 	"github.com/fullstackwang/tron-grpc/api"
+	"github.com/fullstackwang/tron-grpc/client"
 	"google.golang.org/grpc"
 	"log"
 )
@@ -18,7 +18,7 @@ func logData(v any) {
 }
 
 func main() {
-	client := tron_grpc.NewGrpcClient("", "")
+	client := client.New("", "")
 	err := client.Start(grpc.WithInsecure())
 	if err != nil {
 		log.Fatalln(err)
