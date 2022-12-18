@@ -11,29 +11,29 @@ import (
 )
 
 type Signer interface {
-	SignTransaction(tx *Transaction) error
+	SignTransaction(txHash []byte) ([]byte, error)
 }
 
 type Transaction struct {
 	*core.Transaction
 
 	client    api.WalletClient
-	signer    Signer
 	Confirmed bool
 	Txid      []byte
 	Return    *api.Return
 	Info      *core.TransactionInfo
 }
 
-func (tx *Transaction) Send(ctx context.Context) error {
+func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
 	err := tx.updateHash()
 	if err != nil {
 		return err
 	}
-	err = tx.signer.SignTransaction(tx)
+	sig, err := signer.SignTransaction(tx.Txid)
 	if err != nil {
 		return err
 	}
+	tx.Signature = append(tx.Signature, sig)
 	tx.Return, err = tx.client.BroadcastTransaction(ctx, tx.Transaction)
 	return err
 }
@@ -68,10 +68,9 @@ func (tx *Transaction) WaitConfirmation() error {
 	}
 }
 
-func New(client api.WalletClient, signer Signer, tx *core.Transaction) *Transaction {
+func New(client api.WalletClient, tx *core.Transaction) *Transaction {
 	return &Transaction{
 		client:      client,
-		signer:      signer,
 		Transaction: tx,
 	}
 }

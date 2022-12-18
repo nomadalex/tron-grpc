@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/dustinxie/ecc"
 	"github.com/fullstackwang/tron-grpc/address"
-	"github.com/fullstackwang/tron-grpc/tx"
 	"golang.org/x/crypto/sha3"
 	"math/big"
 )
@@ -69,13 +68,8 @@ func privKeyFromBytes(data []byte) *ecdsa.PrivateKey {
 	return priv
 }
 
-func (w *Wallet) SignTransaction(tx *tx.Transaction) error {
-	sig, err := ecc.SignEthereum(tx.Txid, w.privKey)
-	if err != nil {
-		return err
-	}
-	tx.Signature = append(tx.Signature, sig)
-	return nil
+func (w *Wallet) SignTransaction(txHash []byte) ([]byte, error) {
+	return ecc.SignEthereum(txHash, w.privKey)
 }
 
 func (w *Wallet) SignMessage(msg string) ([]byte, error) {
