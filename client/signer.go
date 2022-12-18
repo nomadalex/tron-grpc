@@ -7,6 +7,6 @@ import (
 type Signer interface {
 	Address() address.Address
 	PubkeyString() string
-	SignTransaction(txHash []byte) ([]byte, error)
+	SignTransactionHash(txHash []byte) ([]byte, error)
 	SignMessage(msg string) ([]byte, error)
 }

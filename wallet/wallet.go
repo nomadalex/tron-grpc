@@ -68,7 +68,7 @@ func privKeyFromBytes(data []byte) *ecdsa.PrivateKey {
 	return priv
 }
 
-func (w *Wallet) SignTransaction(txHash []byte) ([]byte, error) {
+func (w *Wallet) SignTransactionHash(txHash []byte) ([]byte, error) {
 	return ecc.SignEthereum(txHash, w.privKey)
 }
 

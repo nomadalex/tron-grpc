@@ -11,7 +11,7 @@ import (
 )
 
 type Signer interface {
-	SignTransaction(txHash []byte) ([]byte, error)
+	SignTransactionHash(txHash []byte) ([]byte, error)
 }
 
 type Transaction struct {
@@ -29,7 +29,7 @@ func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
 	if err != nil {
 		return err
 	}
-	sig, err := signer.SignTransaction(tx.Txid)
+	sig, err := signer.SignTransactionHash(tx.Txid)
 	if err != nil {
 		return err
 	}
