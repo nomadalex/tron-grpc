@@ -91,17 +91,17 @@ func processApiType(t string) string {
 
 func genMethod(f *os.File, m method) {
 	f.WriteString(fmt.Sprintf(`
-func (g *GrpcClient) %s(ctx context.Context, in %s, opts ...grpc.CallOption) (%s, error) {
-	ctx, cancel := g.makeContext(ctx)
+func (c *Client) %s(ctx context.Context, in %s, opts ...grpc.CallOption) (%s, error) {
+	ctx, cancel := c.makeContext(ctx)
 	defer cancel()
-	return g.client.%s(ctx, in, opts...)
+	return c.client.%s(ctx, in, opts...)
 }
 `, m.Name, processApiType(m.In), processApiType(m.Out), m.Name))
 }
 
 func main() {
 	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, "api/api_grpc.pb.go", nil, parser.ParseComments)
+	node, err := parser.ParseFile(fset, "../api/api_grpc.pb.go", nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	f.WriteString(`package tron_grpc
+	f.WriteString(`package client
 
 import (
 	"context"
