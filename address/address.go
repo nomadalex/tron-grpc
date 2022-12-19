@@ -6,10 +6,12 @@ import (
 )
 
 const (
-	// AddressLength is the expected length of the address
-	AddressLength = 21
-	// AddressLengthBase58 is the expected length of the address in base58format
-	AddressLengthBase58 = 34
+	// Length is the expected length of the address
+	Length = 21
+	// LengthBase58 is the expected length of the address in base58format
+	LengthBase58 = 34
+	// LengthEthAddress is the expected length of the eth address
+	LengthEthAddress = 20
 	// TronBytePrefix is the hex prefix to address
 	TronBytePrefix = byte(0x41)
 )
@@ -39,22 +41,19 @@ func (a Address) String() string {
 	return EncodeCheck(a)
 }
 
-func BytesToAddress(b []byte) Address {
-	return b
+func FromBytes(b []byte) (Address, error) {
+	return b, nil
 }
 
-// HexToAddress returns Address with byte values of s.
-// If s is larger than len(h), s will be cropped from the left.
-func HexToAddress(s string) Address {
+func FromHex(s string) (Address, error) {
 	addr, err := hex.DecodeString(s)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return addr
+	return addr, nil
 }
 
-// Base58ToAddress returns Address with byte values of s.
-func Base58ToAddress(s string) (Address, error) {
+func FromBase58(s string) (Address, error) {
 	addr, err := DecodeCheck(s)
 	if err != nil {
 		return nil, err
@@ -62,9 +61,9 @@ func Base58ToAddress(s string) (Address, error) {
 	return addr, nil
 }
 
-func FromEthAddress(addr []byte) Address {
-	a := make([]byte, 0, AddressLength)
+func FromEthAddress(addr []byte) (Address, error) {
+	a := make([]byte, 0, Length)
 	a = append(a, TronBytePrefix)
 	a = append(a, addr...)
-	return a
+	return a, nil
 }

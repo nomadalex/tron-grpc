@@ -31,7 +31,7 @@ func (c *Client) newTxAndSend(ctx context.Context, tx_ *core.Transaction) (*tx.T
 }
 
 func (c *Client) GetAccount(ctx context.Context, account string) (*core.Account, error) {
-	addr, err := address.Base58ToAddress(account)
+	addr, err := address.FromBase58(account)
 	in := core.Account{Address: addr}
 	ret, err := c.client.GetAccount(ctx, &in)
 	if err != nil {
@@ -49,7 +49,7 @@ func (c *Client) GetBalance(ctx context.Context, account string) (int64, error) 
 }
 
 func (c *Client) GetAccountResource(ctx context.Context, addr string) (*api.AccountResourceMessage, error) {
-	addr_, err := address.Base58ToAddress(addr)
+	addr_, err := address.FromBase58(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (c *Client) GetAccountResource(ctx context.Context, addr string) (*api.Acco
 }
 
 func (c *Client) CreateAccount(ctx context.Context, account string) (*tx.Transaction, error) {
-	toAddr, err := address.Base58ToAddress(account)
+	toAddr, err := address.FromBase58(account)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (c *Client) CreateAccount(ctx context.Context, account string) (*tx.Transac
 }
 
 func (c *Client) Transfer(ctx context.Context, to string, amount int64) (*tx.Transaction, error) {
-	toAddr, err := address.Base58ToAddress(to)
+	toAddr, err := address.FromBase58(to)
 	if err != nil {
 		return nil, err
 	}

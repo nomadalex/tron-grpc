@@ -40,8 +40,10 @@ func (c *Client) Address() string {
 	return c.address
 }
 
-func (c *Client) SetPrivateKey(key string) {
-	c.Signer = wallet.NewWalletFromPrivateKey(key)
+func (c *Client) SetPrivateKey(key string) error {
+	var err error
+	c.Signer, err = wallet.FromPrivateKey(key)
+	return err
 }
 
 // SetTimeout for Client connections

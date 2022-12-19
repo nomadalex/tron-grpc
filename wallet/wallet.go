@@ -31,13 +31,13 @@ func (w *Wallet) AddressString() string {
 	return w.address.String()
 }
 
-func NewWalletFromPrivateKey(privateKey string) *Wallet {
+func FromPrivateKey(privateKey string) (*Wallet, error) {
 	data, err := hex.DecodeString(privateKey)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	if len(data) != 32 {
-		return nil
+		return nil, fmt.Errorf("size error")
 	}
 
 	p := privKeyFromBytes(data)
@@ -45,7 +45,7 @@ func NewWalletFromPrivateKey(privateKey string) *Wallet {
 	return &Wallet{
 		privKey: p,
 		address: addr,
-	}
+	}, nil
 }
 
 func genAddressFromPrivKey(p *ecdsa.PrivateKey) address.Address {
@@ -56,7 +56,8 @@ func genAddressFromPrivKey(p *ecdsa.PrivateKey) address.Address {
 	s := sha3.NewLegacyKeccak256()
 	s.Write(pubBytes)
 	hash := s.Sum(nil)
-	return address.FromEthAddress(hash[12:])
+	addr, _ := address.FromEthAddress(hash[12:])
+	return addr
 }
 
 func privKeyFromBytes(data []byte) *ecdsa.PrivateKey {
