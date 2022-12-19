@@ -64,9 +64,7 @@ type EventDecoder struct {
 }
 
 func (d *EventDecoder) DecodeAddr(addr []byte) (any, error) {
-	ctx := newDecodeContext(addr)
-	dd := &addressDecoder{}
-	return dd.Decode(ctx)
+	return decodeAddress(addr)
 }
 
 func (d *EventDecoder) DecodeTopic(idx int, topic []byte) (any, error) {
@@ -207,7 +205,7 @@ func parseEvent(r *record) (Event, error) {
 	inputTypes := collectTypes(r.Inputs)
 
 	var sig []byte
-	if r.Anonymous {
+	if !r.Anonymous {
 		eventDecl := fmt.Sprintf("%s(%s)", r.Name, strings.Join(inputTypes, ","))
 		sig = calcEventSig(eventDecl)
 	}
@@ -231,6 +229,7 @@ func parseEvent(r *record) (Event, error) {
 		Name:        r.Name,
 		Sig:         sig,
 		IsAnonymous: r.Anonymous,
+		Inputs:      inputs,
 		Decoder: &EventDecoder{
 			topicsDecoders: topicDecoders,
 			dataDecoders:   dataDecoders,
