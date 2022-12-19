@@ -1,15 +1,35 @@
 package contract
 
 import (
+	"bytes"
 	"context"
 	"github.com/fullstackwang/tron-grpc/abi"
 	"github.com/fullstackwang/tron-grpc/address"
 	"github.com/fullstackwang/tron-grpc/client"
+	"github.com/fullstackwang/tron-grpc/core"
 	"github.com/fullstackwang/tron-grpc/tx"
 	"math/big"
 )
 
 const erc20Abi = "[ { \"inputs\": [ { \"internalType\": \"string\", \"name\": \"name_\", \"type\": \"string\" }, { \"internalType\": \"string\", \"name\": \"symbol_\", \"type\": \"string\" } ], \"stateMutability\": \"nonpayable\", \"type\": \"constructor\" }, { \"anonymous\": false, \"inputs\": [ { \"indexed\": true, \"internalType\": \"address\", \"name\": \"owner\", \"type\": \"address\" }, { \"indexed\": true, \"internalType\": \"address\", \"name\": \"spender\", \"type\": \"address\" }, { \"indexed\": false, \"internalType\": \"uint256\", \"name\": \"value\", \"type\": \"uint256\" } ], \"name\": \"Approval\", \"type\": \"event\" }, { \"anonymous\": false, \"inputs\": [ { \"indexed\": true, \"internalType\": \"address\", \"name\": \"from\", \"type\": \"address\" }, { \"indexed\": true, \"internalType\": \"address\", \"name\": \"to\", \"type\": \"address\" }, { \"indexed\": false, \"internalType\": \"uint256\", \"name\": \"value\", \"type\": \"uint256\" } ], \"name\": \"Transfer\", \"type\": \"event\" }, { \"inputs\": [ { \"internalType\": \"address\", \"name\": \"owner\", \"type\": \"address\" }, { \"internalType\": \"address\", \"name\": \"spender\", \"type\": \"address\" } ], \"name\": \"allowance\", \"outputs\": [ { \"internalType\": \"uint256\", \"name\": \"\", \"type\": \"uint256\" } ], \"stateMutability\": \"view\", \"type\": \"function\" }, { \"inputs\": [ { \"internalType\": \"address\", \"name\": \"spender\", \"type\": \"address\" }, { \"internalType\": \"uint256\", \"name\": \"amount\", \"type\": \"uint256\" } ], \"name\": \"approve\", \"outputs\": [ { \"internalType\": \"bool\", \"name\": \"\", \"type\": \"bool\" } ], \"stateMutability\": \"nonpayable\", \"type\": \"function\" }, { \"inputs\": [ { \"internalType\": \"address\", \"name\": \"account\", \"type\": \"address\" } ], \"name\": \"balanceOf\", \"outputs\": [ { \"internalType\": \"uint256\", \"name\": \"\", \"type\": \"uint256\" } ], \"stateMutability\": \"view\", \"type\": \"function\" }, { \"inputs\": [], \"name\": \"decimals\", \"outputs\": [ { \"internalType\": \"uint8\", \"name\": \"\", \"type\": \"uint8\" } ], \"stateMutability\": \"view\", \"type\": \"function\" }, { \"inputs\": [ { \"internalType\": \"address\", \"name\": \"spender\", \"type\": \"address\" }, { \"internalType\": \"uint256\", \"name\": \"subtractedValue\", \"type\": \"uint256\" } ], \"name\": \"decreaseAllowance\", \"outputs\": [ { \"internalType\": \"bool\", \"name\": \"\", \"type\": \"bool\" } ], \"stateMutability\": \"nonpayable\", \"type\": \"function\" }, { \"inputs\": [ { \"internalType\": \"address\", \"name\": \"spender\", \"type\": \"address\" }, { \"internalType\": \"uint256\", \"name\": \"addedValue\", \"type\": \"uint256\" } ], \"name\": \"increaseAllowance\", \"outputs\": [ { \"internalType\": \"bool\", \"name\": \"\", \"type\": \"bool\" } ], \"stateMutability\": \"nonpayable\", \"type\": \"function\" }, { \"inputs\": [], \"name\": \"name\", \"outputs\": [ { \"internalType\": \"string\", \"name\": \"\", \"type\": \"string\" } ], \"stateMutability\": \"view\", \"type\": \"function\" }, { \"inputs\": [], \"name\": \"symbol\", \"outputs\": [ { \"internalType\": \"string\", \"name\": \"\", \"type\": \"string\" } ], \"stateMutability\": \"view\", \"type\": \"function\" }, { \"inputs\": [], \"name\": \"totalSupply\", \"outputs\": [ { \"internalType\": \"uint256\", \"name\": \"\", \"type\": \"uint256\" } ], \"stateMutability\": \"view\", \"type\": \"function\" }, { \"inputs\": [ { \"internalType\": \"address\", \"name\": \"recipient\", \"type\": \"address\" }, { \"internalType\": \"uint256\", \"name\": \"amount\", \"type\": \"uint256\" } ], \"name\": \"transfer\", \"outputs\": [ { \"internalType\": \"bool\", \"name\": \"\", \"type\": \"bool\" } ], \"stateMutability\": \"nonpayable\", \"type\": \"function\" }, { \"inputs\": [ { \"internalType\": \"address\", \"name\": \"sender\", \"type\": \"address\" }, { \"internalType\": \"address\", \"name\": \"recipient\", \"type\": \"address\" }, { \"internalType\": \"uint256\", \"name\": \"amount\", \"type\": \"uint256\" } ], \"name\": \"transferFrom\", \"outputs\": [ { \"internalType\": \"bool\", \"name\": \"\", \"type\": \"bool\" } ], \"stateMutability\": \"nonpayable\", \"type\": \"function\" } ]"
+
+type Erc20Event struct {
+	Name string
+	TransferEvent
+	ApprovalEvent
+}
+
+type TransferEvent struct {
+	Address  address.Address
+	From, To address.Address
+	Value    *big.Int
+}
+
+type ApprovalEvent struct {
+	Address        address.Address
+	Owner, Spender address.Address
+	Value          *big.Int
+}
 
 type Erc20 struct {
 	contract *Contract
@@ -124,14 +144,168 @@ func (c *Erc20) TransferFrom(ctx context.Context, from, to address.Address, amou
 	return tx, nil
 }
 
-func (c *Erc20) GetEvents(tx *tx.Transaction) ([]Event, error) {
-	return c.contract.GetEvents(tx)
+func (c *Erc20) GetEvents(tx *tx.Transaction) ([]Erc20Event, error) {
+	myAddr := c.contract.address.ToEthAddress()
+
+	var events []Erc20Event
+	parsers := []erc20EventParser{
+		{
+			sig: c.transferEvent.Sig,
+			parser: func(log *core.TransactionInfo_Log) error {
+				e, err := parseTransferEvent(log, c.contract.address, c.transferEvent.Decoder)
+				if err != nil {
+					return err
+				}
+				events = append(events, Erc20Event{Name: c.transferEvent.Name, TransferEvent: e})
+				return nil
+			},
+		},
+		{
+			sig: c.approvalEvent.Sig,
+			parser: func(log *core.TransactionInfo_Log) error {
+				e, err := parseApproveEvent(log, c.contract.address, c.approvalEvent.Decoder)
+				if err != nil {
+					return err
+				}
+				events = append(events, Erc20Event{Name: c.approvalEvent.Name, ApprovalEvent: e})
+				return nil
+			},
+		},
+	}
+
+	err := forEachLog(tx, myAddr, parsers)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
 }
 
-func (c *Erc20) GetTransferEvents(tx *tx.Transaction) ([]Event, error) {
-	return c.contract.getEventsByABIEvent(tx, c.transferEvent)
+func (c *Erc20) GetTransferEvents(tx *tx.Transaction) ([]TransferEvent, error) {
+	myAddr := c.contract.address.ToEthAddress()
+
+	var events []TransferEvent
+	parsers := []erc20EventParser{
+		{
+			sig: c.transferEvent.Sig,
+			parser: func(log *core.TransactionInfo_Log) error {
+				e, err := parseTransferEvent(log, c.contract.address, c.transferEvent.Decoder)
+				if err != nil {
+					return err
+				}
+				events = append(events, e)
+				return nil
+			},
+		},
+	}
+
+	err := forEachLog(tx, myAddr, parsers)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
 }
 
-func (c *Erc20) GetApprovalEvents(tx *tx.Transaction) ([]Event, error) {
-	return c.contract.getEventsByABIEvent(tx, c.approvalEvent)
+func (c *Erc20) GetApprovalEvents(tx *tx.Transaction) ([]ApprovalEvent, error) {
+	myAddr := c.contract.address.ToEthAddress()
+
+	var events []ApprovalEvent
+	parsers := []erc20EventParser{
+		{
+			sig: c.transferEvent.Sig,
+			parser: func(log *core.TransactionInfo_Log) error {
+				e, err := parseApproveEvent(log, c.contract.address, c.approvalEvent.Decoder)
+				if err != nil {
+					return err
+				}
+				events = append(events, e)
+				return nil
+			},
+		},
+	}
+
+	err := forEachLog(tx, myAddr, parsers)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+
+func parseTransferEvent(log_ *core.TransactionInfo_Log, addr address.Address, dec *abi.EventDecoder) (TransferEvent, error) {
+	var err error
+	var from, to, data any
+	from, err = dec.DecodeTopic(0, log_.Topics[1])
+	to, err = dec.DecodeTopic(1, log_.Topics[2])
+	data, err = dec.DecodeData(log_.Data)
+	if err != nil {
+		return TransferEvent{}, err
+	}
+
+	return TransferEvent{
+		Address: addr,
+		From:    from.(address.Address),
+		To:      to.(address.Address),
+		Value:   data.(*big.Int),
+	}, nil
+}
+
+func parseApproveEvent(log_ *core.TransactionInfo_Log, addr address.Address, dec *abi.EventDecoder) (ApprovalEvent, error) {
+	var err error
+	var owner, spender, data any
+	owner, err = dec.DecodeTopic(0, log_.Topics[1])
+	spender, err = dec.DecodeTopic(1, log_.Topics[2])
+	data, err = dec.DecodeData(log_.Data)
+	if err != nil {
+		return ApprovalEvent{}, err
+	}
+
+	return ApprovalEvent{
+		Address: addr,
+		Owner:   owner.(address.Address),
+		Spender: spender.(address.Address),
+		Value:   data.(*big.Int),
+	}, nil
+}
+
+type erc20EventParser struct {
+	sig    []byte
+	parser func(log *core.TransactionInfo_Log) error
+}
+
+func (p *erc20EventParser) CheckSig(sig []byte) bool {
+	return bytes.Equal(p.sig, sig)
+}
+
+func (p *erc20EventParser) Parse(log *core.TransactionInfo_Log) error {
+	return p.parser(log)
+}
+
+func forEachLog(tx *tx.Transaction, myAddr []byte, parsers []erc20EventParser) error {
+	if len(parsers) == 1 {
+		p := parsers[0]
+		for _, log_ := range tx.Info.Log {
+			if !bytes.Equal(log_.Address, myAddr) {
+				continue
+			}
+			if p.CheckSig(log_.Topics[0]) {
+				err := p.Parse(log_)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	for _, log_ := range tx.Info.Log {
+		if !bytes.Equal(log_.Address, myAddr) {
+			continue
+		}
+		for _, p := range parsers {
+			if p.CheckSig(log_.Topics[0]) {
+				err := p.Parse(log_)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
