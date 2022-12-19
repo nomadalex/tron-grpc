@@ -17,14 +17,18 @@ type SendOption struct {
 	FeeLimit int64
 }
 
+type ConstantMethod func(ctx context.Context, args ...any) ([]any, error)
+type Method func(ctx context.Context, args ...any) (*tx.Transaction, error)
+
 type Event struct {
 	Name string
 }
 
 type Contract struct {
-	iface   *abi.Interface
-	address address.Address
-	client  *client.Client
+	constantMethods map[string]ConstantMethod
+	methods         map[string]Method
+	address         address.Address
+	client          *client.Client
 }
 
 func New(client *client.Client, addr address.Address) *Contract {
@@ -35,18 +39,26 @@ func New(client *client.Client, addr address.Address) *Contract {
 }
 
 func (c *Contract) LoadABI(abiJson []byte) error {
-	var err error
-	c.iface, err = abi.Parse(abiJson)
-	return err
-}
-
-func (c *Contract) getMethod(name string) *abi.Method {
-	for _, m := range c.iface.Methods {
-		if m.Name == name {
-			return &m
+	iface, err := abi.Parse(abiJson)
+	if err != nil {
+		return err
+	}
+	for _, m := range iface.Methods {
+		if m.IsConstant {
+			c.constantMethods[m.Name] = c.createConstantMethod(&m)
+		} else {
+			c.methods[m.Name] = c.createMethod(&m)
 		}
 	}
 	return nil
+}
+
+func (c *Contract) GetConstantMethod(methodName string) ConstantMethod {
+	return c.constantMethods[methodName]
+}
+
+func (c *Contract) GetMethod(methodName string) Method {
+	return c.methods[methodName]
 }
 
 func (c *Contract) getTriggerSmartContract(m *abi.Method, args []any) (*core.TriggerSmartContract, error) {
@@ -64,23 +76,21 @@ func (c *Contract) getTriggerSmartContract(m *abi.Method, args []any) (*core.Tri
 	}, nil
 }
 
-func (c *Contract) Call(ctx context.Context, methodName string, args ...any) ([]any, error) {
-	m := c.getMethod(methodName)
-	if m == nil {
-		return nil, fmt.Errorf("method not found")
+func (c *Contract) createConstantMethod(m *abi.Method) ConstantMethod {
+	return func(ctx context.Context, args ...any) ([]any, error) {
+		in, err := c.getTriggerSmartContract(m, args)
+		if err != nil {
+			return nil, err
+		}
+		t, err := c.client.TriggerConstantContract(ctx, in)
+		if err != nil {
+			return nil, err
+		}
+		if t.Result.Code > 0 {
+			return nil, fmt.Errorf(string(t.Result.Message))
+		}
+		return m.OutputDecoder.Decode(t.ConstantResult)
 	}
-	in, err := c.getTriggerSmartContract(m, args)
-	if err != nil {
-		return nil, err
-	}
-	t, err := c.client.TriggerConstantContract(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	if t.Result.Code > 0 {
-		return nil, fmt.Errorf(string(t.Result.Message))
-	}
-	return m.OutputDecoder.Decode(t.ConstantResult)
 }
 
 func getSendOption(args []any) *SendOption {
@@ -93,35 +103,48 @@ func getSendOption(args []any) *SendOption {
 	return nil
 }
 
-func (c *Contract) Send(ctx context.Context, methodName string, args ...any) (*tx.Transaction, error) {
-	m := c.getMethod(methodName)
+func (c *Contract) createMethod(m *abi.Method) Method {
+	return func(ctx context.Context, args ...any) (*tx.Transaction, error) {
+		option := getSendOption(args)
+
+		feeLimit := int64(defaultFeeLimit)
+		if option != nil {
+			feeLimit = option.FeeLimit
+		}
+
+		in, err := c.getTriggerSmartContract(m, args)
+		if err != nil {
+			return nil, err
+		}
+
+		t, err := c.client.TriggerContract(ctx, in)
+		if err != nil {
+			return nil, err
+		}
+		if t.Result.Code > 0 {
+			return nil, fmt.Errorf(string(t.Result.Message))
+		}
+
+		t.Transaction.RawData.FeeLimit = feeLimit
+		tt := tx.NewWithDecoder(c.client, t.Transaction, m.OutputDecoder.Decode)
+		return tt, tt.Send(ctx, c.client.Signer)
+	}
+}
+
+func (c *Contract) Call(ctx context.Context, methodName string, args ...any) ([]any, error) {
+	m := c.constantMethods[methodName]
 	if m == nil {
 		return nil, fmt.Errorf("method not found")
 	}
+	return m(ctx, args...)
+}
 
-	option := getSendOption(args)
-
-	feeLimit := int64(defaultFeeLimit)
-	if option != nil {
-		feeLimit = option.FeeLimit
+func (c *Contract) Send(ctx context.Context, methodName string, args ...any) (*tx.Transaction, error) {
+	m := c.methods[methodName]
+	if m == nil {
+		return nil, fmt.Errorf("method not found")
 	}
-
-	in, err := c.getTriggerSmartContract(m, args)
-	if err != nil {
-		return nil, err
-	}
-
-	t, err := c.client.TriggerContract(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	if t.Result.Code > 0 {
-		return nil, fmt.Errorf(string(t.Result.Message))
-	}
-
-	t.Transaction.RawData.FeeLimit = feeLimit
-	tt := tx.NewWithDecoder(c.client, t.Transaction, m.OutputDecoder.Decode)
-	return tt, tt.Send(ctx, c.client.Signer)
+	return m(ctx, args...)
 }
 
 func (c *Contract) GetEvents(tx *tx.Transaction) ([]Event, error) {
