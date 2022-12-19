@@ -22,7 +22,7 @@ type Event struct {
 }
 
 type Contract struct {
-	methods []abi.Method
+	iface   *abi.Interface
 	address address.Address
 	client  *client.Client
 }
@@ -36,12 +36,12 @@ func New(client *client.Client, addr address.Address) *Contract {
 
 func (c *Contract) LoadABI(abiJson []byte) error {
 	var err error
-	c.methods, err = abi.ParseMethods(abiJson)
+	c.iface, err = abi.Parse(abiJson)
 	return err
 }
 
 func (c *Contract) getMethod(name string) *abi.Method {
-	for _, m := range c.methods {
+	for _, m := range c.iface.Methods {
 		if m.Name == name {
 			return &m
 		}

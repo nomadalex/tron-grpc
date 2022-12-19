@@ -58,6 +58,10 @@ func createArgumentDecoder(types []string) (ArgumentDecoder, error) {
 	return decoders, nil
 }
 
+type Interface struct {
+	Methods []Method
+}
+
 type Method struct {
 	Name          string
 	Sig           []byte
@@ -101,7 +105,7 @@ func calcFunctionSig(funcDecl string) []byte {
 	return hash[:4]
 }
 
-func ParseMethods(jsonData []byte) ([]Method, error) {
+func Parse(jsonData []byte) (*Interface, error) {
 	var records []record
 	err := json.Unmarshal(jsonData, &records)
 	if err != nil {
@@ -130,7 +134,9 @@ func ParseMethods(jsonData []byte) ([]Method, error) {
 			})
 		}
 	}
-	return methods, nil
+	return &Interface{
+		Methods: methods,
+	}, nil
 }
 
 func EncodeTypedData(types []string, data []any) ([]byte, error) {
