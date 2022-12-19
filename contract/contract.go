@@ -20,21 +20,38 @@ type SendOption struct {
 type ConstantMethod func(ctx context.Context, args ...any) ([]any, error)
 type Method func(ctx context.Context, args ...any) (*tx.Transaction, error)
 
+type EventInput struct {
+	Name  string
+	Value any
+}
+
 type Event struct {
-	Name string
+	Name        string
+	Sig         []byte
+	IsAnonymous bool
+	Address     address.Address
+	Inputs      []EventInput
 }
 
 type Contract struct {
+	address address.Address
+	client  *client.Client
+
 	constantMethods map[string]ConstantMethod
 	methods         map[string]Method
-	address         address.Address
-	client          *client.Client
+
+	eventSigMap map[string]*abi.Event
+	events      map[string]*abi.Event
 }
 
 func New(client *client.Client, addr address.Address) *Contract {
 	return &Contract{
-		address: addr,
-		client:  client,
+		address:         addr,
+		client:          client,
+		constantMethods: make(map[string]ConstantMethod),
+		methods:         make(map[string]Method),
+		eventSigMap:     make(map[string]*abi.Event),
+		events:          make(map[string]*abi.Event),
 	}
 }
 
@@ -49,6 +66,12 @@ func (c *Contract) LoadABI(abiJson []byte) error {
 		} else {
 			c.methods[m.Name] = c.createMethod(&m)
 		}
+	}
+	for _, event := range iface.Events {
+		if !event.IsAnonymous {
+			c.eventSigMap[string(event.Sig)] = &event
+		}
+		c.events[event.Name] = &event
 	}
 	return nil
 }
@@ -147,6 +170,87 @@ func (c *Contract) Send(ctx context.Context, methodName string, args ...any) (*t
 	return m(ctx, args...)
 }
 
+func decodeEvent(ed *abi.Event, log *core.TransactionInfo_Log) (Event, error) {
+	dataValues, err := ed.Decoder.DecodeData(log.Data)
+	if err != nil {
+		return Event{}, err
+	}
+
+	addr, err := ed.Decoder.DecodeAddr(log.Address)
+	if err != nil {
+		return Event{}, err
+	}
+
+	topicOffset := 0
+	dataOffset := 0
+	var inputs []EventInput
+
+	for _, input := range ed.Inputs {
+		if input.Indexed {
+			v, err := ed.Decoder.DecodeTopic(topicOffset, log.Topics[topicOffset+1])
+			if err != nil {
+				return Event{}, err
+			}
+			inputs = append(inputs, EventInput{
+				Name:  input.Name,
+				Value: v,
+			})
+			topicOffset = topicOffset + 1
+		} else {
+			inputs = append(inputs, EventInput{
+				Name:  input.Name,
+				Value: dataValues[dataOffset],
+			})
+			dataOffset = dataOffset + 1
+		}
+	}
+	return Event{
+		Name:        ed.Name,
+		Sig:         ed.Sig,
+		IsAnonymous: ed.IsAnonymous,
+		Address:     addr.(address.Address),
+		Inputs:      inputs,
+	}, nil
+}
+
 func (c *Contract) GetEvents(tx *tx.Transaction) ([]Event, error) {
-	return nil, nil
+	var events []Event
+	for _, log_ := range tx.Info.Log {
+		if !bytes.Equal(log_.Address, c.address.ToEthAddress()) {
+			continue
+		}
+		ed := c.eventSigMap[string(log_.Topics[0])]
+		if ed == nil {
+			continue
+		}
+		e, err := decodeEvent(ed, log_)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, nil
+}
+
+func (c *Contract) GetEventsByName(tx *tx.Transaction, eventName string) ([]Event, error) {
+	ed := c.events[eventName]
+	if ed == nil {
+		return nil, fmt.Errorf("event type not found")
+	}
+
+	var events []Event
+	for _, log_ := range tx.Info.Log {
+		if !bytes.Equal(log_.Address, c.address.ToEthAddress()) {
+			continue
+		}
+		if !bytes.Equal(log_.Topics[0], ed.Sig) {
+			continue
+		}
+		e, err := decodeEvent(ed, log_)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, e)
+	}
+	return events, nil
 }
