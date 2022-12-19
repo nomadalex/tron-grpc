@@ -14,14 +14,16 @@ type Signer interface {
 	SignTransactionHash(txHash []byte) ([]byte, error)
 }
 
+type ResultDecoder func([][]byte) ([]any, error)
+
 type Transaction struct {
 	*core.Transaction
 
-	client    api.WalletClient
-	Confirmed bool
-	Txid      []byte
-	Return    *api.Return
-	Info      *core.TransactionInfo
+	client        api.WalletClient
+	Confirmed     bool
+	Txid          []byte
+	Info          *core.TransactionInfo
+	resultDecoder ResultDecoder
 }
 
 func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
@@ -34,8 +36,14 @@ func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
 		return err
 	}
 	tx.Signature = append(tx.Signature, sig)
-	tx.Return, err = tx.client.BroadcastTransaction(ctx, tx.Transaction)
-	return err
+	ret, err := tx.client.BroadcastTransaction(ctx, tx.Transaction)
+	if err != nil {
+		return err
+	}
+	if ret.Code > 0 {
+		return fmt.Errorf(string(ret.Message))
+	}
+	return nil
 }
 
 func (tx *Transaction) updateHash() error {
@@ -57,8 +65,9 @@ func (tx *Transaction) WaitConfirmation() error {
 		if err != nil {
 			return err
 		}
-		if info != nil {
+		if info != nil && info.Id != nil {
 			tx.Info = info
+			tx.Confirmed = true
 			return nil
 		}
 		if time.Now().After(timeout) {
@@ -68,9 +77,30 @@ func (tx *Transaction) WaitConfirmation() error {
 	}
 }
 
+func (tx *Transaction) GetResult() ([]any, error) {
+	if !tx.Confirmed {
+		return nil, fmt.Errorf("tx not confirmed")
+	}
+	if tx.Info.Result > 0 {
+		return nil, fmt.Errorf(string(tx.Info.ResMessage))
+	}
+	if tx.resultDecoder == nil {
+		return nil, fmt.Errorf("no result decoder")
+	}
+	return tx.resultDecoder(tx.Info.ContractResult)
+}
+
 func New(client api.WalletClient, tx *core.Transaction) *Transaction {
 	return &Transaction{
 		client:      client,
 		Transaction: tx,
+	}
+}
+
+func NewWithDecoder(client api.WalletClient, tx *core.Transaction, resultDecoder ResultDecoder) *Transaction {
+	return &Transaction{
+		client:        client,
+		Transaction:   tx,
+		resultDecoder: resultDecoder,
 	}
 }
