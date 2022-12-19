@@ -11,6 +11,9 @@ type ArgumentEncoder []encoder
 type ArgumentDecoder []decoder
 
 func (e ArgumentEncoder) Encode(args []any) ([]byte, error) {
+	if len(e) == 0 {
+		return nil, nil
+	}
 	ctx := newEncodeContext()
 	for i, ee := range e {
 		err := ee.Encode(ctx, args[i])
@@ -22,6 +25,9 @@ func (e ArgumentEncoder) Encode(args []any) ([]byte, error) {
 }
 
 func (d ArgumentDecoder) Decode(result [][]byte) ([]any, error) {
+	if len(d) == 0 {
+		return nil, nil
+	}
 	var args []any
 	for i, dd := range d {
 		ctx := newDecodeContext(result[i])
