@@ -55,7 +55,8 @@ func genAddressFromPrivKey(p *ecdsa.PrivateKey) address.Address {
 
 	s := sha3.NewLegacyKeccak256()
 	s.Write(pubBytes)
-	return address.HashToAddress(s.Sum(nil))
+	hash := s.Sum(nil)
+	return address.FromEthAddress(hash[12:])
 }
 
 func privKeyFromBytes(data []byte) *ecdsa.PrivateKey {

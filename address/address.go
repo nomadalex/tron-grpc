@@ -22,6 +22,10 @@ func (a Address) Bytes() []byte {
 	return a[:]
 }
 
+func (a Address) ToEthAddress() []byte {
+	return a[1:]
+}
+
 // Hex get bytes from address in string
 func (a Address) Hex() string {
 	return hex.EncodeToString(a[:])
@@ -58,9 +62,9 @@ func Base58ToAddress(s string) (Address, error) {
 	return addr, nil
 }
 
-func HashToAddress(data []byte) Address {
-	addr := make([]byte, 0, AddressLength)
-	addr = append(addr, TronBytePrefix)
-	addr = append(addr, data[12:32]...)
-	return addr
+func FromEthAddress(addr []byte) Address {
+	a := make([]byte, 0, AddressLength)
+	a = append(a, TronBytePrefix)
+	a = append(a, addr...)
+	return a
 }
