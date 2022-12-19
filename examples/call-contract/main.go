@@ -29,6 +29,7 @@ func main() {
 	checkEvents(client, c)
 
 	checkErc20(client)
+	checkErc20Events(client)
 }
 
 func createContract(client *client.Client) *contract.Contract {
@@ -150,4 +151,46 @@ func checkErc20(client *client.Client) {
 		log.Fatalln(err)
 	}
 	tx.WaitConfirmation()
+}
+
+func checkErc20Events(client *client.Client) {
+	c := contract.NewErc20(client, address.FromBase58Unsafe("TMLTMoPQFXyof68S2C6X8Nsjso3cqajUMz"))
+
+	tt, err := tx.GetFromID(context.Background(), client, "daf3fb704a0178e60bd494fbf55a5f983b402aee1e4020d6f501e099646b4570", true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	events, err := c.GetEvents(tt)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	for i, event := range events {
+		log.Println(i, "event", event)
+	}
+	tevents, err := c.GetTransferEvents(tt)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	for i, event := range tevents {
+		log.Println(i, "transfer event", event)
+	}
+
+	tt, err = tx.GetFromID(context.Background(), client, "259224a37fdcb18c9992c113dff413bc7d63bff1a8d2a970b553b18ce5ca41ae", true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	events, err = c.GetEvents(tt)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	for i, event := range events {
+		log.Println(i, "event", event)
+	}
+	aevents, err := c.GetApprovalEvents(tt)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	for i, event := range aevents {
+		log.Println(i, "approval event", event)
+	}
 }
