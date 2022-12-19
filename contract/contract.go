@@ -69,10 +69,11 @@ func (c *Contract) LoadABI(abiJson []byte) error {
 		}
 	}
 	for _, event := range iface.Events {
+		ee := event
 		if !event.IsAnonymous {
-			c.eventSigMap[string(event.Sig)] = &event
+			c.eventSigMap[string(event.Sig)] = &ee
 		}
-		c.events[event.Name] = &event
+		c.events[event.Name] = &ee
 	}
 	return nil
 }

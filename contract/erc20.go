@@ -215,7 +215,8 @@ func parserEventWithABIEvent[E any](tx *tx.Transaction, c *Contract, ev *abi.Eve
 
 func parseTransferEvent(log_ *core.TransactionInfo_Log, addr address.Address, dec *abi.EventDecoder) (TransferEvent, error) {
 	var err error
-	var from, to, data any
+	var from, to any
+	var data []any
 	from, err = dec.DecodeTopic(0, log_.Topics[1])
 	to, err = dec.DecodeTopic(1, log_.Topics[2])
 	data, err = dec.DecodeData(log_.Data)
@@ -227,13 +228,14 @@ func parseTransferEvent(log_ *core.TransactionInfo_Log, addr address.Address, de
 		Address: addr,
 		From:    from.(address.Address),
 		To:      to.(address.Address),
-		Value:   data.(*big.Int),
+		Value:   data[0].(*big.Int),
 	}, nil
 }
 
 func parseApproveEvent(log_ *core.TransactionInfo_Log, addr address.Address, dec *abi.EventDecoder) (ApprovalEvent, error) {
 	var err error
-	var owner, spender, data any
+	var owner, spender any
+	var data []any
 	owner, err = dec.DecodeTopic(0, log_.Topics[1])
 	spender, err = dec.DecodeTopic(1, log_.Topics[2])
 	data, err = dec.DecodeData(log_.Data)
@@ -245,7 +247,7 @@ func parseApproveEvent(log_ *core.TransactionInfo_Log, addr address.Address, dec
 		Address: addr,
 		Owner:   owner.(address.Address),
 		Spender: spender.(address.Address),
-		Value:   data.(*big.Int),
+		Value:   data[0].(*big.Int),
 	}, nil
 }
 
@@ -276,6 +278,7 @@ func forEachLog(tx *tx.Transaction, myAddr []byte, parsers []erc20EventParser) e
 				}
 			}
 		}
+		return nil
 	}
 	for _, log_ := range tx.Info.Log {
 		if !bytes.Equal(log_.Address, myAddr) {
@@ -287,6 +290,7 @@ func forEachLog(tx *tx.Transaction, myAddr []byte, parsers []erc20EventParser) e
 				if err != nil {
 					return err
 				}
+				break
 			}
 		}
 	}
