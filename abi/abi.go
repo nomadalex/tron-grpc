@@ -1,4 +1,4 @@
-package contract
+package abi
 
 import (
 	"encoding/json"
@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-type argumentEncoder []encoder
-type argumentDecoder []decoder
+type ArgumentEncoder []encoder
+type ArgumentDecoder []decoder
 
-func (e argumentEncoder) Encode(args []any) ([]byte, error) {
+func (e ArgumentEncoder) Encode(args []any) ([]byte, error) {
 	ctx := &encodeContext{}
 	for i, ee := range e {
 		err := ee.Encode(ctx, args[i])
@@ -21,7 +21,7 @@ func (e argumentEncoder) Encode(args []any) ([]byte, error) {
 	return ctx.Result(), nil
 }
 
-func (d argumentDecoder) Decode(result [][]byte) ([]any, error) {
+func (d ArgumentDecoder) Decode(result [][]byte) ([]any, error) {
 	var args []any
 	for i, dd := range d {
 		ctx := &decodeContext{data: result[i]}
@@ -34,7 +34,7 @@ func (d argumentDecoder) Decode(result [][]byte) ([]any, error) {
 	return args, nil
 }
 
-func createArgumentEncoder(types []string) (argumentEncoder, error) {
+func createArgumentEncoder(types []string) (ArgumentEncoder, error) {
 	var encoders []encoder
 	for _, t := range types {
 		e, err := createEncoder(t)
@@ -46,7 +46,7 @@ func createArgumentEncoder(types []string) (argumentEncoder, error) {
 	return encoders, nil
 }
 
-func createArgumentDecoder(types []string) (argumentDecoder, error) {
+func createArgumentDecoder(types []string) (ArgumentDecoder, error) {
 	var decoders []decoder
 	for _, t := range types {
 		e, err := createDecoder(t)
@@ -58,30 +58,30 @@ func createArgumentDecoder(types []string) (argumentDecoder, error) {
 	return decoders, nil
 }
 
-type method struct {
+type Method struct {
 	Name          string
 	Sig           []byte
-	inputEncoder  argumentEncoder
-	outputDecoder argumentDecoder
+	InputEncoder  ArgumentEncoder
+	OutputDecoder ArgumentDecoder
 }
 
-type abiArguments struct {
-	Name       string         `json:"name,omitempty"`
-	Type       string         `json:"type,omitempty"`
-	Components []abiArguments `json:"components,omitempty"`
-	Indexed    bool           `json:"indexed,omitempty"`
+type arguments struct {
+	Name       string      `json:"name,omitempty"`
+	Type       string      `json:"type,omitempty"`
+	Components []arguments `json:"components,omitempty"`
+	Indexed    bool        `json:"indexed,omitempty"`
 }
 
-type abiRecord struct {
-	Type            string         `json:"type"`
-	Name            string         `json:"name"`
-	Inputs          []abiArguments `json:"inputs"`
-	Outputs         []abiArguments `json:"outputs"`
-	StateMutability string         `json:"stateMutability"`
-	Anonymous       bool           `json:"anonymous,omitempty"`
+type record struct {
+	Type            string      `json:"type"`
+	Name            string      `json:"name"`
+	Inputs          []arguments `json:"inputs"`
+	Outputs         []arguments `json:"outputs"`
+	StateMutability string      `json:"stateMutability"`
+	Anonymous       bool        `json:"anonymous,omitempty"`
 }
 
-func collectTypes(args []abiArguments) []string {
+func collectTypes(args []arguments) []string {
 	var ret []string
 	for _, arg := range args {
 		if strings.HasPrefix(arg.Type, "tuple") {
@@ -101,13 +101,13 @@ func calcFunctionSig(funcDecl string) []byte {
 	return hash[:4]
 }
 
-func parseAbi(jsonData []byte) ([]method, error) {
-	var records []abiRecord
+func ParseMethods(jsonData []byte) ([]Method, error) {
+	var records []record
 	err := json.Unmarshal(jsonData, &records)
 	if err != nil {
 		return nil, err
 	}
-	var methods []method
+	var methods []Method
 	for _, r := range records {
 		if r.Type == "function" {
 			inputTypes := collectTypes(r.Inputs)
@@ -122,11 +122,11 @@ func parseAbi(jsonData []byte) ([]method, error) {
 				return nil, err
 			}
 
-			methods = append(methods, method{
+			methods = append(methods, Method{
 				Name:          r.Name,
 				Sig:           calcFunctionSig(funcName),
-				inputEncoder:  encoder,
-				outputDecoder: decoder,
+				InputEncoder:  encoder,
+				OutputDecoder: decoder,
 			})
 		}
 	}

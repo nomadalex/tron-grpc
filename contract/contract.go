@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/fullstackwang/tron-grpc/abi"
 	"github.com/fullstackwang/tron-grpc/address"
 	"github.com/fullstackwang/tron-grpc/client"
 	"github.com/fullstackwang/tron-grpc/core"
@@ -21,7 +22,7 @@ type Event struct {
 }
 
 type Contract struct {
-	methods []method
+	methods []abi.Method
 	address address.Address
 	client  *client.Client
 }
@@ -35,11 +36,11 @@ func New(client *client.Client, addr address.Address) *Contract {
 
 func (c *Contract) LoadABI(abiJson []byte) error {
 	var err error
-	c.methods, err = parseAbi(abiJson)
+	c.methods, err = abi.ParseMethods(abiJson)
 	return err
 }
 
-func (c *Contract) getMethod(name string) *method {
+func (c *Contract) getMethod(name string) *abi.Method {
 	for _, m := range c.methods {
 		if m.Name == name {
 			return &m
@@ -48,8 +49,8 @@ func (c *Contract) getMethod(name string) *method {
 	return nil
 }
 
-func (c *Contract) getTriggerSmartContract(m *method, args []any) (*core.TriggerSmartContract, error) {
-	inputData, err := m.inputEncoder.Encode(args)
+func (c *Contract) getTriggerSmartContract(m *abi.Method, args []any) (*core.TriggerSmartContract, error) {
+	inputData, err := m.InputEncoder.Encode(args)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func (c *Contract) Call(ctx context.Context, methodName string, args ...any) ([]
 	if t.Result.Code > 0 {
 		return nil, fmt.Errorf(string(t.Result.Message))
 	}
-	return m.outputDecoder.Decode(t.ConstantResult)
+	return m.OutputDecoder.Decode(t.ConstantResult)
 }
 
 func getSendOption(args []any) *SendOption {
@@ -119,7 +120,7 @@ func (c *Contract) Send(ctx context.Context, methodName string, args ...any) (*t
 	}
 
 	t.Transaction.RawData.FeeLimit = feeLimit
-	tt := tx.NewWithDecoder(c.client, t.Transaction, m.outputDecoder.Decode)
+	tt := tx.NewWithDecoder(c.client, t.Transaction, m.OutputDecoder.Decode)
 	return tt, tt.Send(ctx, c.client.Signer)
 }
 
