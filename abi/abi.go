@@ -150,6 +150,14 @@ func collectTypes(args []arguments) []string {
 			ret = append(ret, fmt.Sprintf("(%s)%s", strings.Join(types, ","), arg.Type[5:]))
 			continue
 		}
+		if arg.Type == "int" {
+			ret = append(ret, "int256")
+			continue
+		}
+		if arg.Type == "uint" {
+			ret = append(ret, "uint256")
+			continue
+		}
 		ret = append(ret, arg.Type)
 	}
 	return ret
