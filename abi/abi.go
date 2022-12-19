@@ -58,8 +58,51 @@ func createArgumentDecoder(types []string) (ArgumentDecoder, error) {
 	return decoders, nil
 }
 
+type EventDecoder struct {
+	topicsDecoders []decoder
+	dataDecoders   []decoder
+}
+
+func (d *EventDecoder) DecodeAddr(addr []byte) (any, error) {
+	ctx := newDecodeContext(addr)
+	dd := &addressDecoder{}
+	return dd.Decode(ctx)
+}
+
+func (d *EventDecoder) DecodeTopic(idx int, topic []byte) (any, error) {
+	ctx := newDecodeContext(topic)
+	return d.topicsDecoders[idx].Decode(ctx)
+}
+
+func (d *EventDecoder) DecodeTopics(topics [][]byte) ([]any, error) {
+	var vals []any
+	for i, topic := range topics {
+		ctx := newDecodeContext(topic)
+		v, err := d.topicsDecoders[i].Decode(ctx)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, v)
+	}
+	return vals, nil
+}
+
+func (d *EventDecoder) DecodeData(data []byte) ([]any, error) {
+	var vals []any
+	ctx := newDecodeContext(data)
+	for _, dd := range d.dataDecoders {
+		v, err := dd.Decode(ctx)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, v)
+	}
+	return vals, nil
+}
+
 type Interface struct {
 	Methods []Method
+	Events  []Event
 }
 
 type Method struct {
@@ -68,6 +111,19 @@ type Method struct {
 	InputEncoder  ArgumentEncoder
 	OutputDecoder ArgumentDecoder
 	IsConstant    bool
+}
+
+type EventInput struct {
+	Name    string
+	Indexed bool
+}
+
+type Event struct {
+	Name        string
+	IsAnonymous bool
+	Sig         []byte
+	Inputs      []EventInput
+	Decoder     *EventDecoder
 }
 
 type arguments struct {
@@ -106,6 +162,61 @@ func calcFunctionSig(funcDecl string) []byte {
 	return hash[:4]
 }
 
+func parseFunction(r *record) (Method, error) {
+	inputTypes := collectTypes(r.Inputs)
+	outputTypes := collectTypes(r.Outputs)
+	funcName := fmt.Sprintf("%s(%s)", r.Name, strings.Join(inputTypes, ","))
+	encoder, err := createArgumentEncoder(inputTypes)
+	if err != nil {
+		return Method{}, err
+	}
+	decoder, err := createArgumentDecoder(outputTypes)
+	if err != nil {
+		return Method{}, err
+	}
+	isConstant := r.StateMutability == "pure" || r.StateMutability == "view"
+
+	return Method{
+		Name:          r.Name,
+		Sig:           calcFunctionSig(funcName),
+		InputEncoder:  encoder,
+		OutputDecoder: decoder,
+		IsConstant:    isConstant,
+	}, nil
+}
+
+func parseEvent(r *record) (Event, error) {
+	var inputs []EventInput
+	var topicDecoders []decoder
+	var dataDecoders []decoder
+	inputTypes := collectTypes(r.Inputs)
+	sigName := fmt.Sprintf("%s(%s)", r.Name, strings.Join(inputTypes, ","))
+	for i, input := range r.Inputs {
+		inputs = append(inputs, EventInput{
+			Name:    input.Name,
+			Indexed: input.Indexed,
+		})
+		d, err := createDecoder(inputTypes[i])
+		if err != nil {
+			return Event{}, err
+		}
+		if input.Indexed {
+			topicDecoders = append(topicDecoders, d)
+		} else {
+			dataDecoders = append(dataDecoders, d)
+		}
+	}
+	return Event{
+		Name:        r.Name,
+		Sig:         calcFunctionSig(sigName),
+		IsAnonymous: r.Anonymous,
+		Decoder: &EventDecoder{
+			topicsDecoders: topicDecoders,
+			dataDecoders:   dataDecoders,
+		},
+	}, nil
+}
+
 func Parse(jsonData []byte) (*Interface, error) {
 	var records []record
 	err := json.Unmarshal(jsonData, &records)
@@ -113,32 +224,26 @@ func Parse(jsonData []byte) (*Interface, error) {
 		return nil, err
 	}
 	var methods []Method
+	var events []Event
 	for _, r := range records {
 		if r.Type == "function" {
-			inputTypes := collectTypes(r.Inputs)
-			outputTypes := collectTypes(r.Outputs)
-			funcName := fmt.Sprintf("%s(%s)", r.Name, strings.Join(inputTypes, ","))
-			encoder, err := createArgumentEncoder(inputTypes)
+			m, err := parseFunction(&r)
 			if err != nil {
 				return nil, err
 			}
-			decoder, err := createArgumentDecoder(outputTypes)
+			methods = append(methods, m)
+		}
+		if r.Type == "event" {
+			e, err := parseEvent(&r)
 			if err != nil {
 				return nil, err
 			}
-			isConstant := r.StateMutability == "pure" || r.StateMutability == "view"
-
-			methods = append(methods, Method{
-				Name:          r.Name,
-				Sig:           calcFunctionSig(funcName),
-				InputEncoder:  encoder,
-				OutputDecoder: decoder,
-				IsConstant:    isConstant,
-			})
+			events = append(events, e)
 		}
 	}
 	return &Interface{
 		Methods: methods,
+		Events:  events,
 	}, nil
 }
 
