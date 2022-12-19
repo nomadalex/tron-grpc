@@ -2,7 +2,6 @@ package abi
 
 import (
 	"bytes"
-	"encoding/hex"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -126,18 +125,9 @@ func (e *addressEncoder) IsDynamic() bool {
 }
 
 func (e *addressEncoder) Encode(ctx *encodeContext, val any) error {
-	var b []byte
-	var err error
-	switch val.(type) {
-	case string:
-		b, err = hex.DecodeString(val.(string))
-		if err != nil {
-			return err
-		}
-	case []byte:
-		b = val.([]byte)
-	default:
-		return ErrValueTypeNotSupport
+	b, err := encodeAddress(val)
+	if err != nil {
+		return err
 	}
 
 	head := make([]byte, 32)

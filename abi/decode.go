@@ -102,7 +102,11 @@ func (d *addressDecoder) IsDynamic() bool {
 }
 
 func (d *addressDecoder) Decode(ctx *decodeContext) (any, error) {
-	return ctx.ReadAddress()
+	addr, err := ctx.ReadAddress()
+	if err != nil {
+		return nil, err
+	}
+	return decodeAddress(addr)
 }
 
 func getDecodeContext(ctx *decodeContext, isDyn bool, size int) (*decodeContext, int) {
