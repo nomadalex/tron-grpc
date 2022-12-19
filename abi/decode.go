@@ -12,6 +12,10 @@ type decodeContext struct {
 	offset int
 }
 
+func newDecodeContext(data []byte) *decodeContext {
+	return &decodeContext{data: data}
+}
+
 func (ctx *decodeContext) GoNext(offset int) {
 	ctx.offset = ctx.offset + offset
 }
@@ -113,7 +117,7 @@ func getDecodeContext(ctx *decodeContext, isDyn bool, size int) (*decodeContext,
 	cc := ctx
 	if isDyn {
 		index := ctx.ReadDynamicIndex()
-		cc = &decodeContext{data: ctx.GetDynamicBuf(index)}
+		cc = newDecodeContext(ctx.GetDynamicBuf(index))
 	}
 	if size < 0 {
 		size = cc.ReadLen()

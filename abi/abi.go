@@ -11,7 +11,7 @@ type ArgumentEncoder []encoder
 type ArgumentDecoder []decoder
 
 func (e ArgumentEncoder) Encode(args []any) ([]byte, error) {
-	ctx := &encodeContext{}
+	ctx := newEncodeContext()
 	for i, ee := range e {
 		err := ee.Encode(ctx, args[i])
 		if err != nil {
@@ -24,7 +24,7 @@ func (e ArgumentEncoder) Encode(args []any) ([]byte, error) {
 func (d ArgumentDecoder) Decode(result [][]byte) ([]any, error) {
 	var args []any
 	for i, dd := range d {
-		ctx := &decodeContext{data: result[i]}
+		ctx := newDecodeContext(result[i])
 		v, err := dd.Decode(ctx)
 		if err != nil {
 			return nil, err
@@ -143,7 +143,7 @@ func Parse(jsonData []byte) (*Interface, error) {
 }
 
 func EncodeTypedData(types []string, data []any) ([]byte, error) {
-	ctx := &encodeContext{}
+	ctx := newEncodeContext()
 	for i, t := range types {
 		e, err := createEncoder(t)
 		if err != nil {
@@ -159,7 +159,7 @@ func EncodeTypedData(types []string, data []any) ([]byte, error) {
 
 func DecodeTypedData(types []string, data []byte) ([]any, error) {
 	var val []any
-	ctx := &decodeContext{data: data}
+	ctx := newDecodeContext(data)
 	for _, t := range types {
 		d, err := createDecoder(t)
 		if err != nil {

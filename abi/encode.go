@@ -19,6 +19,10 @@ type encodeContext struct {
 	dynRefs    []dynamicRef
 }
 
+func newEncodeContext() *encodeContext {
+	return &encodeContext{}
+}
+
 func (ctx *encodeContext) AddDynamicRef() {
 	ctx.dynRefs = append(ctx.dynRefs, dynamicRef{
 		headOffset:    ctx.GetHeadOffset(),
@@ -234,7 +238,7 @@ func encodeDynamic(ctx *encodeContext, val any, isDyn bool, encoders []encoder) 
 	if isDyn {
 		ctx.AddDynamicRef()
 		ctx.WriteBigInt(big.NewInt(int64(v.Len())), false, true)
-		cc = &encodeContext{}
+		cc = newEncodeContext()
 	}
 	getEncoder := func(idx int) encoder {
 		if len(encoders) == 1 {
