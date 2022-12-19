@@ -3,6 +3,7 @@ package tx
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/fullstackwang/tron-grpc/api"
 	"github.com/fullstackwang/tron-grpc/core"
@@ -57,6 +58,19 @@ func (tx *Transaction) updateHash() error {
 	return nil
 }
 
+func (tx *Transaction) CheckConfirmation() error {
+	in := api.BytesMessage{Value: tx.Txid}
+	info, err := tx.client.GetTransactionInfoById(context.Background(), &in)
+	if err != nil {
+		return err
+	}
+	if info != nil && info.Id != nil {
+		tx.Info = info
+		tx.Confirmed = true
+	}
+	return nil
+}
+
 func (tx *Transaction) WaitConfirmation() error {
 	in := api.BytesMessage{Value: tx.Txid}
 	timeout := time.Now().Add(10 * time.Second)
@@ -103,4 +117,27 @@ func NewWithDecoder(client api.WalletClient, tx *core.Transaction, resultDecoder
 		Transaction:   tx,
 		resultDecoder: resultDecoder,
 	}
+}
+
+func GetFromID(ctx context.Context, client api.WalletClient, ID string, checkConfirm bool) (*Transaction, error) {
+	hash, err := hex.DecodeString(ID)
+	if err != nil {
+		return nil, err
+	}
+
+	in := &api.BytesMessage{Value: hash}
+	t, err := client.GetTransactionById(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := New(client, t)
+	tx.Txid = hash
+	if checkConfirm {
+		err = tx.CheckConfirmation()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tx, nil
 }
