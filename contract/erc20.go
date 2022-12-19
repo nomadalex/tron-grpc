@@ -3,6 +3,7 @@ package contract
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/fullstackwang/tron-grpc/abi"
 	"github.com/fullstackwang/tron-grpc/address"
 	"github.com/fullstackwang/tron-grpc/client"
@@ -17,6 +18,17 @@ type Erc20Event struct {
 	Name string
 	TransferEvent
 	ApprovalEvent
+}
+
+func (e Erc20Event) String() string {
+	switch e.Name {
+	case "Transfer":
+		return fmt.Sprint(e.Name, e.TransferEvent)
+	case "Approval":
+		return fmt.Sprint(e.Name, e.ApprovalEvent)
+	default:
+		return ""
+	}
 }
 
 type TransferEvent struct {
