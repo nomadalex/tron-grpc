@@ -19,18 +19,6 @@ func (w *Wallet) Address() address.Address {
 	return w.address
 }
 
-func (w *Wallet) PubkeyString() string {
-	pubBytes := make([]byte, 0, 64)
-	pubBytes = append(pubBytes, 0x04)
-	pubBytes = append(pubBytes, w.privKey.X.Bytes()...)
-	pubBytes = append(pubBytes, w.privKey.Y.Bytes()...)
-	return hex.EncodeToString(pubBytes)
-}
-
-func (w *Wallet) AddressString() string {
-	return w.address.String()
-}
-
 func FromPrivateKey(privateKey string) (*Wallet, error) {
 	data, err := hex.DecodeString(privateKey)
 	if err != nil {
