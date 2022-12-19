@@ -170,6 +170,13 @@ func calcFunctionSig(funcDecl string) []byte {
 	return hash[:4]
 }
 
+func calcEventSig(decl string) []byte {
+	h := sha3.NewLegacyKeccak256()
+	h.Write([]byte(decl))
+	hash := h.Sum(nil)
+	return hash
+}
+
 func parseFunction(r *record) (Method, error) {
 	inputTypes := collectTypes(r.Inputs)
 	outputTypes := collectTypes(r.Outputs)
@@ -198,7 +205,13 @@ func parseEvent(r *record) (Event, error) {
 	var topicDecoders []decoder
 	var dataDecoders []decoder
 	inputTypes := collectTypes(r.Inputs)
-	sigName := fmt.Sprintf("%s(%s)", r.Name, strings.Join(inputTypes, ","))
+
+	var sig []byte
+	if r.Anonymous {
+		eventDecl := fmt.Sprintf("%s(%s)", r.Name, strings.Join(inputTypes, ","))
+		sig = calcEventSig(eventDecl)
+	}
+
 	for i, input := range r.Inputs {
 		inputs = append(inputs, EventInput{
 			Name:    input.Name,
@@ -216,7 +229,7 @@ func parseEvent(r *record) (Event, error) {
 	}
 	return Event{
 		Name:        r.Name,
-		Sig:         calcFunctionSig(sigName),
+		Sig:         sig,
 		IsAnonymous: r.Anonymous,
 		Decoder: &EventDecoder{
 			topicsDecoders: topicDecoders,
