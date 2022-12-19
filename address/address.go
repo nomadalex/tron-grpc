@@ -53,12 +53,22 @@ func FromHex(s string) (Address, error) {
 	return addr, nil
 }
 
+func FromHexUnsafe(s string) Address {
+	a, _ := FromHex(s)
+	return a
+}
+
 func FromBase58(s string) (Address, error) {
 	addr, err := DecodeCheck(s)
 	if err != nil {
 		return nil, err
 	}
 	return addr, nil
+}
+
+func FromBase58Unsafe(s string) Address {
+	a, _ := FromBase58(s)
+	return a
 }
 
 func FromEthAddress(addr []byte) (Address, error) {
