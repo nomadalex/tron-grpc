@@ -67,6 +67,7 @@ type Method struct {
 	Sig           []byte
 	InputEncoder  ArgumentEncoder
 	OutputDecoder ArgumentDecoder
+	IsConstant    bool
 }
 
 type arguments struct {
@@ -125,12 +126,14 @@ func Parse(jsonData []byte) (*Interface, error) {
 			if err != nil {
 				return nil, err
 			}
+			isConstant := r.StateMutability == "pure" || r.StateMutability == "view"
 
 			methods = append(methods, Method{
 				Name:          r.Name,
 				Sig:           calcFunctionSig(funcName),
 				InputEncoder:  encoder,
 				OutputDecoder: decoder,
+				IsConstant:    isConstant,
 			})
 		}
 	}
