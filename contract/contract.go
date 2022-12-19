@@ -233,25 +233,29 @@ func (c *Contract) GetEvents(tx *tx.Transaction) ([]Event, error) {
 	return events, nil
 }
 
-func (c *Contract) GetEventsByName(tx *tx.Transaction, eventName string) ([]Event, error) {
-	ed := c.events[eventName]
-	if ed == nil {
-		return nil, fmt.Errorf("event type not found")
-	}
-
+func (c *Contract) getEventsByABIEvent(tx *tx.Transaction, ev *abi.Event) ([]Event, error) {
 	var events []Event
 	for _, log_ := range tx.Info.Log {
 		if !bytes.Equal(log_.Address, c.address.ToEthAddress()) {
 			continue
 		}
-		if !bytes.Equal(log_.Topics[0], ed.Sig) {
+		if !bytes.Equal(log_.Topics[0], ev.Sig) {
 			continue
 		}
-		e, err := decodeEvent(ed, log_)
+		e, err := decodeEvent(ev, log_)
 		if err != nil {
 			return nil, err
 		}
 		events = append(events, e)
 	}
 	return events, nil
+}
+
+func (c *Contract) GetEventsByName(tx *tx.Transaction, eventName string) ([]Event, error) {
+	ed := c.events[eventName]
+	if ed == nil {
+		return nil, fmt.Errorf("event type not found")
+	}
+
+	return c.getEventsByABIEvent(tx, ed)
 }

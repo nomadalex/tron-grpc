@@ -2,6 +2,7 @@ package contract
 
 import (
 	"context"
+	"github.com/fullstackwang/tron-grpc/abi"
 	"github.com/fullstackwang/tron-grpc/address"
 	"github.com/fullstackwang/tron-grpc/client"
 	"github.com/fullstackwang/tron-grpc/tx"
@@ -23,22 +24,27 @@ type Erc20 struct {
 	transfer,
 	approve,
 	transferFrom Method
+
+	transferEvent,
+	approvalEvent *abi.Event
 }
 
 func NewErc20(client *client.Client, addr address.Address) *Erc20 {
 	c := New(client, addr)
 	_ = c.LoadABI([]byte(erc20Abi))
 	return &Erc20{
-		contract:     c,
-		name:         c.GetConstantMethod("name"),
-		symbol:       c.GetConstantMethod("symbol"),
-		decimals:     c.GetConstantMethod("decimals"),
-		totalSupply:  c.GetConstantMethod("totalSupply"),
-		balanceOf:    c.GetConstantMethod("balanceOf"),
-		allowance:    c.GetConstantMethod("allowance"),
-		transfer:     c.GetMethod("transfer"),
-		approve:      c.GetMethod("approve"),
-		transferFrom: c.GetMethod("transferFrom"),
+		contract:      c,
+		name:          c.GetConstantMethod("name"),
+		symbol:        c.GetConstantMethod("symbol"),
+		decimals:      c.GetConstantMethod("decimals"),
+		totalSupply:   c.GetConstantMethod("totalSupply"),
+		balanceOf:     c.GetConstantMethod("balanceOf"),
+		allowance:     c.GetConstantMethod("allowance"),
+		transfer:      c.GetMethod("transfer"),
+		approve:       c.GetMethod("approve"),
+		transferFrom:  c.GetMethod("transferFrom"),
+		transferEvent: c.events["Transfer"],
+		approvalEvent: c.events["Approval"],
 	}
 }
 
@@ -116,4 +122,16 @@ func (c *Erc20) TransferFrom(ctx context.Context, from, to address.Address, amou
 		return nil, err
 	}
 	return tx, nil
+}
+
+func (c *Erc20) GetEvents(tx *tx.Transaction) ([]Event, error) {
+	return c.contract.GetEvents(tx)
+}
+
+func (c *Erc20) GetTransferEvents(tx *tx.Transaction) ([]Event, error) {
+	return c.contract.getEventsByABIEvent(tx, c.transferEvent)
+}
+
+func (c *Erc20) GetApprovalEvents(tx *tx.Transaction) ([]Event, error) {
+	return c.contract.getEventsByABIEvent(tx, c.approvalEvent)
 }
