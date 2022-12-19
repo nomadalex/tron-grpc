@@ -181,39 +181,22 @@ func (c *Erc20) GetEvents(tx *tx.Transaction) ([]Erc20Event, error) {
 }
 
 func (c *Erc20) GetTransferEvents(tx *tx.Transaction) ([]TransferEvent, error) {
-	myAddr := c.contract.address.ToEthAddress()
-
-	var events []TransferEvent
-	parsers := []erc20EventParser{
-		{
-			sig: c.transferEvent.Sig,
-			parser: func(log *core.TransactionInfo_Log) error {
-				e, err := parseTransferEvent(log, c.contract.address, c.transferEvent.Decoder)
-				if err != nil {
-					return err
-				}
-				events = append(events, e)
-				return nil
-			},
-		},
-	}
-
-	err := forEachLog(tx, myAddr, parsers)
-	if err != nil {
-		return nil, err
-	}
-	return events, nil
+	return parserEventWithABIEvent(tx, c.contract, c.transferEvent, parseTransferEvent)
 }
 
 func (c *Erc20) GetApprovalEvents(tx *tx.Transaction) ([]ApprovalEvent, error) {
-	myAddr := c.contract.address.ToEthAddress()
+	return parserEventWithABIEvent(tx, c.contract, c.approvalEvent, parseApproveEvent)
+}
 
-	var events []ApprovalEvent
+func parserEventWithABIEvent[E any](tx *tx.Transaction, c *Contract, ev *abi.Event, cb func(log *core.TransactionInfo_Log, addr address.Address, decoder *abi.EventDecoder) (E, error)) ([]E, error) {
+	myAddr := c.address.ToEthAddress()
+
+	var events []E
 	parsers := []erc20EventParser{
 		{
-			sig: c.transferEvent.Sig,
+			sig: ev.Sig,
 			parser: func(log *core.TransactionInfo_Log) error {
-				e, err := parseApproveEvent(log, c.contract.address, c.approvalEvent.Decoder)
+				e, err := cb(log, c.address, ev.Decoder)
 				if err != nil {
 					return err
 				}
