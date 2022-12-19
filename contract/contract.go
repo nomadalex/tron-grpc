@@ -61,10 +61,11 @@ func (c *Contract) LoadABI(abiJson []byte) error {
 		return err
 	}
 	for _, m := range iface.Methods {
+		mm := m
 		if m.IsConstant {
-			c.constantMethods[m.Name] = c.createConstantMethod(&m)
+			c.constantMethods[m.Name] = c.createConstantMethod(&mm)
 		} else {
-			c.methods[m.Name] = c.createMethod(&m)
+			c.methods[m.Name] = c.createMethod(&mm)
 		}
 	}
 	for _, event := range iface.Events {
