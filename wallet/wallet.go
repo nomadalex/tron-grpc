@@ -2,10 +2,13 @@ package wallet
 
 import (
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"github.com/dustinxie/ecc"
 	"github.com/fullstackwang/tron-grpc/address"
+	"github.com/fullstackwang/tron-grpc/core"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/crypto/sha3"
 	"math/big"
 )
@@ -17,6 +20,13 @@ type Wallet struct {
 
 func (w *Wallet) Address() address.Address {
 	return w.address
+}
+
+func (w *Wallet) PublicKey() []byte {
+	pubBytes := make([]byte, 0, 64)
+	pubBytes = append(pubBytes, w.privKey.X.Bytes()...)
+	pubBytes = append(pubBytes, w.privKey.Y.Bytes()...)
+	return pubBytes
 }
 
 func FromPrivateKey(privateKey string) (*Wallet, error) {
@@ -58,8 +68,20 @@ func privKeyFromBytes(data []byte) *ecdsa.PrivateKey {
 	return priv
 }
 
-func (w *Wallet) SignTransactionHash(txHash []byte) ([]byte, error) {
-	return ecc.SignEthereum(txHash, w.privKey)
+func (w *Wallet) SignTransaction(tx *core.Transaction) error {
+	rawData, err := proto.Marshal(tx.GetRawData())
+	if err != nil {
+		return err
+	}
+	h256h := sha256.New()
+	h256h.Write(rawData)
+	hash := h256h.Sum(nil)
+	sig, err := ecc.SignEthereum(hash, w.privKey)
+	if err != nil {
+		return err
+	}
+	tx.Signature = append(tx.Signature, sig)
+	return nil
 }
 
 func (w *Wallet) SignMessage(msg string) ([]byte, error) {
