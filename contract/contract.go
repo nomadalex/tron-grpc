@@ -42,6 +42,7 @@ type Contract struct {
 	address address.Address
 	client  *client.Client
 
+	abiMethods      map[string]*abi.Method
 	constantMethods map[string]ConstantMethod
 	methods         map[string]Method
 
@@ -53,6 +54,7 @@ func New(client *client.Client, addr address.Address) *Contract {
 	return &Contract{
 		address:         addr,
 		client:          client,
+		abiMethods:      make(map[string]*abi.Method),
 		constantMethods: make(map[string]ConstantMethod),
 		methods:         make(map[string]Method),
 		eventSigMap:     make(map[string]*abi.Event),
@@ -67,6 +69,7 @@ func (c *Contract) LoadABI(abiJson []byte) error {
 	}
 	for _, m := range iface.Methods {
 		mm := m
+		c.abiMethods[m.Name] = &mm
 		if m.IsConstant {
 			c.constantMethods[m.Name] = c.createConstantMethod(&mm)
 		} else {
@@ -264,4 +267,15 @@ func (c *Contract) GetEventsByName(tx *tx.Transaction, eventName string) ([]Even
 	}
 
 	return c.getEventsByABIEvent(tx, ed)
+}
+
+func (c *Contract) GetResult(tx *tx.Transaction, methodName string) ([]any, error) {
+	m := c.abiMethods[methodName]
+	if m == nil {
+		return nil, ErrMethodNotFound
+	}
+	if !tx.Confirmed || tx.Info == nil {
+		return nil, fmt.Errorf("transaction not confirmed")
+	}
+	return m.OutputDecoder.Decode(tx.Info.ContractResult)
 }
