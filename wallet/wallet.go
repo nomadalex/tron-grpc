@@ -23,7 +23,8 @@ func (w *Wallet) Address() address.Address {
 }
 
 func (w *Wallet) PublicKey() []byte {
-	pubBytes := make([]byte, 0, 64)
+	pubBytes := make([]byte, 0, 65)
+	pubBytes = append(pubBytes, 0x04) // uncompressed
 	pubBytes = append(pubBytes, w.privKey.X.Bytes()...)
 	pubBytes = append(pubBytes, w.privKey.Y.Bytes()...)
 	return pubBytes
