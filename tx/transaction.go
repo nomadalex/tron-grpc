@@ -110,6 +110,16 @@ func New(client api.WalletClient, tx *core.Transaction) *Transaction {
 	}
 }
 
+func NewWithInfo(client api.WalletClient, tx *core.Transaction, info *core.TransactionInfo) *Transaction {
+	return &Transaction{
+		Transaction: tx,
+		client:      client,
+		Confirmed:   info != nil,
+		Txid:        info.Id,
+		Info:        info,
+	}
+}
+
 func NewWithDecoder(client api.WalletClient, tx *core.Transaction, resultDecoder ResultDecoder) *Transaction {
 	return &Transaction{
 		client:        client,
