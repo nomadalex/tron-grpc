@@ -13,6 +13,11 @@ import (
 
 const defaultFeeLimit = 10000000
 
+var (
+	ErrMethodNotFound    = fmt.Errorf("method not found")
+	ErrEventTypeNotFound = fmt.Errorf("event type not found")
+)
+
 type SendOption struct {
 	FeeLimit int64
 }
@@ -159,7 +164,7 @@ func (c *Contract) createMethod(m *abi.Method) Method {
 func (c *Contract) Call(ctx context.Context, methodName string, args ...any) ([]any, error) {
 	m := c.constantMethods[methodName]
 	if m == nil {
-		return nil, fmt.Errorf("method not found")
+		return nil, ErrMethodNotFound
 	}
 	return m(ctx, args...)
 }
@@ -167,7 +172,7 @@ func (c *Contract) Call(ctx context.Context, methodName string, args ...any) ([]
 func (c *Contract) Send(ctx context.Context, methodName string, args ...any) (*tx.Transaction, error) {
 	m := c.methods[methodName]
 	if m == nil {
-		return nil, fmt.Errorf("method not found")
+		return nil, ErrMethodNotFound
 	}
 	return m(ctx, args...)
 }
@@ -255,7 +260,7 @@ func (c *Contract) getEventsByABIEvent(tx *tx.Transaction, ev *abi.Event) ([]Eve
 func (c *Contract) GetEventsByName(tx *tx.Transaction, eventName string) ([]Event, error) {
 	ed := c.events[eventName]
 	if ed == nil {
-		return nil, fmt.Errorf("event type not found")
+		return nil, ErrEventTypeNotFound
 	}
 
 	return c.getEventsByABIEvent(tx, ed)
