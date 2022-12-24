@@ -171,18 +171,19 @@ func collectTypes(args []arguments) []string {
 	return ret
 }
 
-func calcFunctionSig(funcDecl string) []byte {
+func GetKeccak256Hash(data []byte) []byte {
 	h := sha3.NewLegacyKeccak256()
-	h.Write([]byte(funcDecl))
+	h.Write(data)
 	hash := h.Sum(nil)
-	return hash[:4]
+	return hash
+}
+
+func calcFunctionSig(funcDecl string) []byte {
+	return GetKeccak256Hash([]byte(funcDecl))[:4]
 }
 
 func calcEventSig(decl string) []byte {
-	h := sha3.NewLegacyKeccak256()
-	h.Write([]byte(decl))
-	hash := h.Sum(nil)
-	return hash
+	return GetKeccak256Hash([]byte(decl))
 }
 
 func parseFunction(r *record) (Method, error) {
