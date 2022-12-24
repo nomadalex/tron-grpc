@@ -7,11 +7,11 @@ import (
 	"github.com/shengdoushi/base58"
 )
 
-func Encode(input []byte) string {
+func encode(input []byte) string {
 	return base58.Encode(input, base58.BitcoinAlphabet)
 }
 
-func EncodeCheck(input []byte) string {
+func encodeCheck(input []byte) string {
 	h256h0 := sha256.New()
 	h256h0.Write(input)
 	h0 := h256h0.Sum(nil)
@@ -23,15 +23,15 @@ func EncodeCheck(input []byte) string {
 	inputCheck := input
 	inputCheck = append(inputCheck, h1[:4]...)
 
-	return Encode(inputCheck)
+	return encode(inputCheck)
 }
 
-func Decode(input string) ([]byte, error) {
+func decode(input string) ([]byte, error) {
 	return base58.Decode(input, base58.BitcoinAlphabet)
 }
 
-func DecodeCheck(input string) ([]byte, error) {
-	decodeCheck, err := Decode(input)
+func decodeCheck(input string) ([]byte, error) {
+	decodeCheck, err := decode(input)
 
 	if err != nil {
 		return nil, err

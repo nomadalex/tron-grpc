@@ -38,7 +38,7 @@ func (a Address) String() string {
 	if a[0] == 0 {
 		return new(big.Int).SetBytes(a.Bytes()).String()
 	}
-	return EncodeCheck(a)
+	return encodeCheck(a)
 }
 
 func FromBytes(b []byte) (Address, error) {
@@ -59,7 +59,7 @@ func FromHexUnsafe(s string) Address {
 }
 
 func FromBase58(s string) (Address, error) {
-	addr, err := DecodeCheck(s)
+	addr, err := decodeCheck(s)
 	if err != nil {
 		return nil, err
 	}
