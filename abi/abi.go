@@ -7,15 +7,19 @@ import (
 	"strings"
 )
 
-type ArgumentEncoder []encoder
-type ArgumentDecoder []decoder
+type InputEncoder struct {
+	encoders []encoder
+}
+type OutputDecoder struct {
+	decoders []decoder
+}
 
-func (e ArgumentEncoder) Encode(args []any) ([]byte, error) {
-	if len(e) == 0 {
+func (e *InputEncoder) Encode(args []any) ([]byte, error) {
+	if len(e.encoders) == 0 {
 		return nil, nil
 	}
 	ctx := newEncodeContext()
-	for i, ee := range e {
+	for i, ee := range e.encoders {
 		err := ee.Encode(ctx, args[i])
 		if err != nil {
 			return nil, err
@@ -24,12 +28,12 @@ func (e ArgumentEncoder) Encode(args []any) ([]byte, error) {
 	return ctx.Result(), nil
 }
 
-func (d ArgumentDecoder) Decode(result [][]byte) ([]any, error) {
-	if len(d) == 0 {
+func (d OutputDecoder) Decode(result [][]byte) ([]any, error) {
+	if len(d.decoders) == 0 {
 		return nil, nil
 	}
 	var args []any
-	for i, dd := range d {
+	for i, dd := range d.decoders {
 		ctx := newDecodeContext(result[i])
 		v, err := dd.Decode(ctx)
 		if err != nil {
@@ -40,7 +44,7 @@ func (d ArgumentDecoder) Decode(result [][]byte) ([]any, error) {
 	return args, nil
 }
 
-func createArgumentEncoder(types []string) (ArgumentEncoder, error) {
+func createArgumentEncoder(types []string) (*InputEncoder, error) {
 	var encoders []encoder
 	for _, t := range types {
 		e, err := createEncoder(t)
@@ -49,10 +53,10 @@ func createArgumentEncoder(types []string) (ArgumentEncoder, error) {
 		}
 		encoders = append(encoders, e)
 	}
-	return encoders, nil
+	return &InputEncoder{encoders: encoders}, nil
 }
 
-func createArgumentDecoder(types []string) (ArgumentDecoder, error) {
+func createArgumentDecoder(types []string) (*OutputDecoder, error) {
 	var decoders []decoder
 	for _, t := range types {
 		e, err := createDecoder(t)
@@ -61,7 +65,7 @@ func createArgumentDecoder(types []string) (ArgumentDecoder, error) {
 		}
 		decoders = append(decoders, e)
 	}
-	return decoders, nil
+	return &OutputDecoder{decoders: decoders}, nil
 }
 
 type EventDecoder struct {
@@ -112,8 +116,8 @@ type Interface struct {
 type Method struct {
 	Name          string
 	Sig           []byte
-	InputEncoder  ArgumentEncoder
-	OutputDecoder ArgumentDecoder
+	InputEncoder  *InputEncoder
+	OutputDecoder *OutputDecoder
 	IsConstant    bool
 }
 
