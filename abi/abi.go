@@ -277,35 +277,3 @@ func Parse(jsonData []byte) (*Interface, error) {
 		Events:  events,
 	}, nil
 }
-
-func EncodeTypedData(types []string, data []any) ([]byte, error) {
-	ctx := newEncodeContext()
-	for i, t := range types {
-		e, err := createEncoder(t)
-		if err != nil {
-			return nil, err
-		}
-		err = e.Encode(ctx, data[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return ctx.Result(), nil
-}
-
-func DecodeTypedData(types []string, data []byte) ([]any, error) {
-	var val []any
-	ctx := newDecodeContext(data)
-	for _, t := range types {
-		d, err := createDecoder(t)
-		if err != nil {
-			return nil, err
-		}
-		v, err := d.Decode(ctx)
-		if err != nil {
-			return nil, err
-		}
-		val = append(val, v)
-	}
-	return val, nil
-}
