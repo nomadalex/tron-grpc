@@ -63,6 +63,29 @@ func New(client *client.Client, addr address.Address) *Contract {
 	}
 }
 
+func (c *Contract) Clone() *Contract {
+	newContract := &Contract{
+		address:         c.address,
+		client:          c.client,
+		Signer:          c.Signer,
+		abiMethods:      c.abiMethods,
+		constantMethods: make(map[string]ConstantMethod),
+		methods:         make(map[string]Method),
+		eventSigMap:     c.eventSigMap,
+		events:          c.events,
+	}
+
+	for _, m := range c.abiMethods {
+		if m.IsConstant {
+			newContract.constantMethods[m.Name] = newContract.createConstantMethod(m)
+		} else {
+			newContract.methods[m.Name] = newContract.createMethod(m)
+		}
+	}
+
+	return newContract
+}
+
 func (c *Contract) getSigner() client.Signer {
 	if c.Signer != nil {
 		return c.Signer

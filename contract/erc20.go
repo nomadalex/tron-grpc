@@ -80,6 +80,24 @@ func NewErc20(client *client.Client, addr address.Address) *Erc20 {
 	}
 }
 
+func (c *Erc20) Clone() *Erc20 {
+	cc := c.contract.Clone()
+	return &Erc20{
+		contract:      cc,
+		name:          cc.GetConstantMethod("name"),
+		symbol:        cc.GetConstantMethod("symbol"),
+		decimals:      cc.GetConstantMethod("decimals"),
+		totalSupply:   cc.GetConstantMethod("totalSupply"),
+		balanceOf:     cc.GetConstantMethod("balanceOf"),
+		allowance:     cc.GetConstantMethod("allowance"),
+		transfer:      cc.GetMethod("transfer"),
+		approve:       cc.GetMethod("approve"),
+		transferFrom:  cc.GetMethod("transferFrom"),
+		transferEvent: cc.events["Transfer"],
+		approvalEvent: cc.events["Approval"],
+	}
+}
+
 func (c *Erc20) Signer() client.Signer {
 	return c.contract.Signer
 }
