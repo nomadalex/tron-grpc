@@ -125,7 +125,7 @@ func checkErc20(client *client.Client) {
 	}
 	tx.WaitConfirmation()
 
-	tx, err = c.Approve(context.Background(), signer.Address(), big.NewInt(100000))
+	tx, err = c.Approve(context.Background(), signer.Address(), big.NewInt(100000), nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -140,13 +140,13 @@ func checkErc20(client *client.Client) {
 	oldSigner := client.Signer
 	client.Signer = signer
 
-	tx, err = c.TransferFrom(context.Background(), oldSigner.Address(), signer.Address(), big.NewInt(100000))
+	tx, err = c.TransferFrom(context.Background(), oldSigner.Address(), signer.Address(), big.NewInt(100000), nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	tx.WaitConfirmation()
 
-	tx, err = c.Transfer(context.Background(), oldSigner.Address(), big.NewInt(100000))
+	tx, err = c.Transfer(context.Background(), oldSigner.Address(), big.NewInt(100000), nil)
 	if err != nil {
 		log.Fatalln(err)
 	}

@@ -149,8 +149,8 @@ func (c *Erc20) BalanceOf(ctx context.Context, addr address.Address) (*big.Int, 
 	return i, nil
 }
 
-func (c *Erc20) Transfer(ctx context.Context, to address.Address, amount *big.Int) (*tx.Transaction, error) {
-	tx, err := c.transfer(ctx, to, amount)
+func (c *Erc20) Transfer(ctx context.Context, to address.Address, amount *big.Int, option *SendOption) (*tx.Transaction, error) {
+	tx, err := c.transfer(ctx, to, amount, option)
 	if err != nil {
 		return nil, err
 	}
@@ -166,16 +166,16 @@ func (c *Erc20) Allowance(ctx context.Context, owner, spender address.Address) (
 	return i, nil
 }
 
-func (c *Erc20) Approve(ctx context.Context, spender address.Address, amount *big.Int) (*tx.Transaction, error) {
-	tx, err := c.approve(ctx, spender, amount)
+func (c *Erc20) Approve(ctx context.Context, spender address.Address, amount *big.Int, option *SendOption) (*tx.Transaction, error) {
+	tx, err := c.approve(ctx, spender, amount, option)
 	if err != nil {
 		return nil, err
 	}
 	return tx, nil
 }
 
-func (c *Erc20) TransferFrom(ctx context.Context, from, to address.Address, amount *big.Int) (*tx.Transaction, error) {
-	tx, err := c.transferFrom(ctx, from, to, amount)
+func (c *Erc20) TransferFrom(ctx context.Context, from, to address.Address, amount *big.Int, option *SendOption) (*tx.Transaction, error) {
+	tx, err := c.transferFrom(ctx, from, to, amount, option)
 	if err != nil {
 		return nil, err
 	}
