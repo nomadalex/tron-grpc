@@ -11,7 +11,7 @@ import (
 	"github.com/fullstackwang/tron-grpc/tx"
 )
 
-const defaultFeeLimit = 10000000
+const defaultFeeLimit = 50000000
 
 var (
 	ErrMethodNotFound    = fmt.Errorf("method not found")
