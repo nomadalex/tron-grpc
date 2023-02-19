@@ -160,7 +160,7 @@ func (c *Contract) createMethod(m *abi.Method) Method {
 
 		t.Transaction.RawData.FeeLimit = feeLimit
 		tt := tx.NewWithDecoder(c.client, t.Transaction, m.OutputDecoder.Decode)
-		return tt, tt.Send(ctx, c.client.Signer)
+		return tt, tt.SignAndSend(ctx, c.client.Signer)
 	}
 }
 

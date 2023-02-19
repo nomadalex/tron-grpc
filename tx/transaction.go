@@ -27,7 +27,7 @@ type Transaction struct {
 	resultDecoder ResultDecoder
 }
 
-func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
+func (tx *Transaction) Sign(signer Signer) error {
 	err := tx.updateHash()
 	if err != nil {
 		return err
@@ -37,6 +37,10 @@ func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
 		return err
 	}
 	tx.Signature = append(tx.Signature, sig)
+	return nil
+}
+
+func (tx *Transaction) Send(ctx context.Context) error {
 	ret, err := tx.client.BroadcastTransaction(ctx, tx.Transaction)
 	if err != nil {
 		return err
@@ -45,6 +49,14 @@ func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
 		return fmt.Errorf(string(ret.Message))
 	}
 	return nil
+}
+
+func (tx *Transaction) SignAndSend(ctx context.Context, signer Signer) error {
+	err := tx.Sign(signer)
+	if err != nil {
+		return err
+	}
+	return tx.Send(ctx)
 }
 
 func (tx *Transaction) updateHash() error {

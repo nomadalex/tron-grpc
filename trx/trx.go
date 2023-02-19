@@ -27,7 +27,7 @@ func (c *Client) getSignerAddress() address.Address {
 
 func (c *Client) newTxAndSend(ctx context.Context, tx_ *core.Transaction) (*tx.Transaction, error) {
 	t := tx.New(c.client, tx_)
-	return t, t.Send(ctx, c.client.Signer)
+	return t, t.SignAndSend(ctx, c.client.Signer)
 }
 
 func (c *Client) GetAccount(ctx context.Context, account string) (*core.Account, error) {
