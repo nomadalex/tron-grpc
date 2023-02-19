@@ -13,6 +13,7 @@ import (
 
 type Client struct {
 	client *client.Client
+	Signer client.Signer
 }
 
 func New(client *client.Client) *Client {
@@ -21,13 +22,20 @@ func New(client *client.Client) *Client {
 	}
 }
 
+func (c *Client) getSigner() client.Signer {
+	if c.Signer != nil {
+		return c.Signer
+	}
+	return c.client.Signer
+}
+
 func (c *Client) getSignerAddress() address.Address {
-	return c.client.Signer.Address()
+	return c.getSigner().Address()
 }
 
 func (c *Client) newTxAndSend(ctx context.Context, tx_ *core.Transaction) (*tx.Transaction, error) {
 	t := tx.New(c.client, tx_)
-	return t, t.SignAndSend(ctx, c.client.Signer)
+	return t, t.SignAndSend(ctx, c.getSigner())
 }
 
 func (c *Client) GetAccount(ctx context.Context, account string) (*core.Account, error) {

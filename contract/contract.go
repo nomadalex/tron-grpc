@@ -41,6 +41,7 @@ type Event struct {
 type Contract struct {
 	address address.Address
 	client  *client.Client
+	Signer  client.Signer
 
 	abiMethods      map[string]*abi.Method
 	constantMethods map[string]ConstantMethod
@@ -60,6 +61,13 @@ func New(client *client.Client, addr address.Address) *Contract {
 		eventSigMap:     make(map[string]*abi.Event),
 		events:          make(map[string]*abi.Event),
 	}
+}
+
+func (c *Contract) getSigner() client.Signer {
+	if c.Signer != nil {
+		return c.Signer
+	}
+	return c.client.Signer
 }
 
 func (c *Contract) LoadABI(abiJson []byte) error {
@@ -103,7 +111,7 @@ func (c *Contract) getTriggerSmartContract(m *abi.Method, args []any) (*core.Tri
 	buf.Write(m.Sig)
 	buf.Write(inputData)
 	return &core.TriggerSmartContract{
-		OwnerAddress:    c.client.Signer.Address(),
+		OwnerAddress:    c.getSigner().Address(),
 		ContractAddress: c.address,
 		Data:            buf.Bytes(),
 	}, nil
@@ -160,7 +168,7 @@ func (c *Contract) createMethod(m *abi.Method) Method {
 
 		t.Transaction.RawData.FeeLimit = feeLimit
 		tt := tx.NewWithDecoder(c.client, t.Transaction, m.OutputDecoder.Decode)
-		return tt, tt.SignAndSend(ctx, c.client.Signer)
+		return tt, tt.SignAndSend(ctx, c.getSigner())
 	}
 }
 

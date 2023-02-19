@@ -80,6 +80,14 @@ func NewErc20(client *client.Client, addr address.Address) *Erc20 {
 	}
 }
 
+func (c *Erc20) Signer() client.Signer {
+	return c.contract.Signer
+}
+
+func (c *Erc20) SetSigner(signer client.Signer) {
+	c.contract.Signer = signer
+}
+
 func (c *Erc20) Name(ctx context.Context) (string, error) {
 	ret, err := c.name(ctx)
 	if err != nil {
