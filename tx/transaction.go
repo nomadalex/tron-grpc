@@ -12,7 +12,7 @@ import (
 )
 
 type Signer interface {
-	SignTransaction(tx *core.Transaction) error
+	SignTransaction(tx *core.Transaction) ([]byte, error)
 }
 
 type ResultDecoder func([][]byte) ([]any, error)
@@ -32,10 +32,11 @@ func (tx *Transaction) Send(ctx context.Context, signer Signer) error {
 	if err != nil {
 		return err
 	}
-	err = signer.SignTransaction(tx.Transaction)
+	sig, err := signer.SignTransaction(tx.Transaction)
 	if err != nil {
 		return err
 	}
+	tx.Signature = append(tx.Signature, sig)
 	ret, err := tx.client.BroadcastTransaction(ctx, tx.Transaction)
 	if err != nil {
 		return err

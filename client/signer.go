@@ -8,6 +8,6 @@ import (
 type Signer interface {
 	Address() address.Address
 	PublicKey() []byte
-	SignTransaction(tx *core.Transaction) error
+	SignTransaction(tx *core.Transaction) ([]byte, error)
 	SignMessage(msg string) ([]byte, error)
 }

@@ -69,20 +69,15 @@ func privKeyFromBytes(data []byte) *ecdsa.PrivateKey {
 	return priv
 }
 
-func (w *Wallet) SignTransaction(tx *core.Transaction) error {
+func (w *Wallet) SignTransaction(tx *core.Transaction) ([]byte, error) {
 	rawData, err := proto.Marshal(tx.GetRawData())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	h256h := sha256.New()
 	h256h.Write(rawData)
 	hash := h256h.Sum(nil)
-	sig, err := ecc.SignEthereum(hash, w.privKey)
-	if err != nil {
-		return err
-	}
-	tx.Signature = append(tx.Signature, sig)
-	return nil
+	return ecc.SignEthereum(hash, w.privKey)
 }
 
 func (w *Wallet) SignMessage(msg string) ([]byte, error) {
